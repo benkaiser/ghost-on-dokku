@@ -1,34 +1,29 @@
-# [Ghost](https://github.com/TryGhost/Ghost) on [Heroku](http://heroku.com)
+# [Ghost](https://github.com/TryGhost/Ghost) on [Dokku](http://dokku.viewdocs.io/dokku/)
 
 Ghost is a free, open, simple blogging platform. Visit the project's website at <http://ghost.org>, or read the docs on <http://support.ghost.org>.
 
+Thanks project is based on cobysim [ghost-on-heroku ](https://github.com/cobyism/ghost-on-heroku) repo.
+
 ## Ghost version 1.X
 
-The latest release of Ghost is now supported! Changes include:
+The latest release of Ghost is supported!
 
-  * Requires MySQL database, available through either of two add-ons:
-    * [JawsDB](https://elements.heroku.com/addons/jawsdb) (deploy default)
-    * [ClearDB](https://elements.heroku.com/addons/cleardb)
-  * `HEROKU_URL` config var renamed to `PUBLIC_URL` to avoid using Heroku's namespace
-
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+  * Requires MySQL database, available through mariadb plugin and Mailgun account:
+    * [dokku mariadb](https://github.com/dokku/dokku-mariadb)
+    * [mailgun](https://www.mailgun.com/)
 
 ### Things you should know
 
 After deployment,
-- First, visit Ghost at `https://YOURAPPNAME.herokuapp.com/ghost` to set up your admin account
+- First, visit Ghost at `https://YOURAPPNAME.dokku-domain.com/ghost` to set up your admin account
 - The app may take a few minutes to come to life
-- Your blog will be publicly accessible at `https://YOURAPPNAME.herokuapp.com`
-- If you subsequently set up a [custom domain](https://devcenter.heroku.com/articles/custom-domains) for your blog, you’ll need to update your Ghost blog’s `PUBLIC_URL` environment variable accordingly
-- If you create much content or decide to scale-up the dynos to support more traffic, a more substantial, paid database plan will be required.
-
-#### Using with file uploads disabled
-
-Heroku app filesystems [aren’t meant for permanent storage](https://devcenter.heroku.com/articles/dynos#ephemeral-filesystem), so file uploads are disabled by default when using this repository to deploy a Ghost blog to Heroku. If you’re using Ghost on Heroku with S3 file uploads disabled, you should leave all environment variables beginning with `S3_…` blank.
+- Your blog will be publicly accessible at `https://YOURAPPNAME.dokku-domain.com`
+- If you subsequently set up a custom domain for your blog, you’ll need to update your Ghost blog’s `PUBLIC_URL` environment variable accordingly
+- If you create much content or decide to scale-up web process to support more traffic.
 
 #### Configuring S3 file uploads
 
-To configure S3 file storage, create an S3 bucket on Amazon AWS, and then specify the following details as environment variables on the Heroku deployment page (or add these environment variables to your app after deployment via the Heroku dashboard):
+To configure S3 file storage, create an S3 bucket on Amazon AWS, and then specify the following details as environment variables on the Dokku deployment page:
 
 - `S3_ACCESS_KEY_ID` and `S3_ACCESS_SECRET_KEY`: **Required if using S3 uploads**. These fields are the AWS key/secret pair needed to authenticate with Amazon S3. You must have granted this keypair sufficient permissions on the S3 bucket in question in order for S3 uploads to work.
 
@@ -40,23 +35,6 @@ To configure S3 file storage, create an S3 bucket on Amazon AWS, and then specif
 
 Once your app is up and running with these variables in place, you should be able to upload images via the Ghost interface and they’ll be stored in Amazon S3. :sparkles:
 
-##### Provisioning an S3 bucket using an add-on
-
-If you’d prefer not to configure S3 manually, you can provision the [Bucketeer add-on](https://devcenter.heroku.com/articles/bucketeer)
-to get an S3 bucket (Bucketeer starts at $5/mo).
-
-To configure S3 via Bucketeer, leave all the S3 deployment fields blank and deploy your
-Ghost blog. Once your blog is deployed, run the following commands from your terminal:
-
-```bash
-# Provision an Amazon S3 bucket
-heroku addons:create bucketeer --app YOURAPPNAME
-
-# Additionally, the bucket's region must be set to formulate correct URLs
-# (Find the "Region" in your Bucketeer Add-on's web dashboard.)
-heroku config:set S3_BUCKET_REGION=us-east-1 --app YOURAPPNAME
-```
-
 ### How this works
 
 This repository is a [Node.js](https://nodejs.org) web application that specifies [Ghost as a dependency](https://docs.ghost.org/v1.0.0/docs/using-ghost-as-an-npm-module), and makes a deploy button available.
@@ -64,43 +42,44 @@ This repository is a [Node.js](https://nodejs.org) web application that specifie
   * Ghost and Casper theme versions are declared in the Node app's [`package.json`](package.json)
   * Scales across processor cores in larger dynos via [Node cluster API](https://nodejs.org/dist/latest-v6.x/docs/api/cluster.html)
 
-## Updating source code
+## Deploy app
 
-Optionally after deployment, to push Ghost upgrades or work with source code, clone this repo (or a fork) and connect it with the Heroku app:
-
-```bash
-git clone https://github.com/cobyism/ghost-on-heroku
-cd ghost-on-heroku
-
-heroku git:remote -a YOURAPPNAME
-heroku info
-```
-
-Then you can push commits to the Heroku app, triggering new deployments:
+To deploy this dokku app you need to first create the app in your dokku server. We will not cover installing dokku or plugins. You can clone (or a fork) f this repo.
 
 ```bash
-git add .
-git commit -m "Important changes"
-git push heroku master
+dokku apps:create ghost-blog
 ```
 
-Watch the app's server-side behavior to see errors and request traffic:
+We need to create the database and link it to our app to set the DATABASE_URL enviroment variable for our ghost-blog.
 
 ```bash
-heroku logs -t
+dokku mariadb:create ghost-blog-bd
+dokku mariadb:link ghost-blog-bd ghost-blog
 ```
 
-See more about [deploying to Heroku with git](https://devcenter.heroku.com/articles/git).
+Not its time to config some enviroment varaibles for Mailgun (so you can recover your account via emial) and S3 (upload images) to get the app working.
+```bash
+dokku config:set ghost-blog MAILGUN_SMTP_LOGIN=GET_FROM_MAILGUN NODE_ENV=production MAILGUN_SMTP_PASSWORD=GET_FROM_MAILGUN MAILGUN_SMTP_PORT=587 MAILGUN_SMTP_SERVER=smtp.mailgun.org S3_ACCESS_KEY_ID=GET_FROM_S3 S3_ACCESS_SECRET_KEY=GET_FROM_S3 S3_BUCKET_NAME=GET_FROM_S3 S3_BUCKET_REGION=GET_FROM_S3 S3_BUCKET_REGION=GET_FROM_S3
+```
+
+Now its time for deploy your code!
+```bash
+git clone https://github.com/JNajera/ghost-on-dokku
+cd ghost-on-dokku
+
+git add remote dokku dokku@dokku-domain.com:ghost-blog
+git push dokku master
+```
 
 ### Upgrading Ghost
 
-On each deployment, the Heroku Node/npm build process will **auto-upgrade Ghost to the newest 1.x version**. To prevent this behavior, use npm 5+ (or yarn) to create a lockfile.
+On each deployment, the Dokku Node/npm build process will **auto-upgrade Ghost to the newest 1.x version**. To prevent this behavior, use npm 5+ (or yarn) to create a lockfile.
 
 ```bash
 npm install
 git add package-lock.json
 git commit -m 'Lock dependencies'
-git push heroku master
+git push dokku master
 ```
 
 Now, future deployments will always use the same set of dependencies.
@@ -111,7 +90,7 @@ To update to newer versions:
 npm update
 git add package-lock.json
 git commit -m 'Update dependencies'
-git push heroku master
+git push dokku master
 ```
 
 ### Database migrations
@@ -125,8 +104,8 @@ After upgrading Ghost, you may see errors logged like:
 To resolve this error, run the pending migrations and restart to get the app back on-line:
 
 ```bash
-heroku run knex-migrator migrate --mgpath node_modules/ghost
-heroku restart
+dokku run dokku-app-name knex-migrator migrate --mgpath node_modules/ghost
+dokku ps:restart dokku-app-name
 ```
 
 This can be automated by adding the following line to `Procfile`:
@@ -134,10 +113,6 @@ This can be automated by adding the following line to `Procfile`:
 ```
 release: knex-migrator migrate --mgpath node_modules/ghost
 ```
-
-## Problems?
-
-If you have problems using your instance of Ghost, you should check the [official documentation](http://support.ghost.org/) or open an issue on [the official issue tracker](https://github.com/TryGhost/Ghost/issues). If you discover an issue with the deployment process provided by *this repository*, then [open an issue here](https://github.com/cobyism/ghost-on-heroku).
 
 ## License
 
