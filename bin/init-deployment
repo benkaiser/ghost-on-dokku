@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 
 echo "Initializing the deployment…"
-echo "pwd →"
-pwd
-echo "config.production.json →"
-cat "config.production.json"
 
 bin/wait-for-db
 
